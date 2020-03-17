@@ -1,0 +1,16 @@
+{
+    "name": "maras0830/laravel-2c2p",
+    "description": "Laravel 2C2P",
+    "type": "library",
+    "require": {
+        "php": ">=5.4.0",
+        "illuminate/support": "^5.1.*"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Maras0830",
+            "email": "Maras0830@gmail.com"
+        }
+    ]
+}

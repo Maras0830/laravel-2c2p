@@ -4,7 +4,12 @@
     "type": "library",
     "require": {
         "php": ">=5.4.0",
-        "illuminate/support": "^5.1.*"
+        "illuminate/support": "^5.1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Maras0830\\ToCToP\\": "src"
+        }
     },
     "license": "MIT",
     "authors": [
@@ -12,5 +17,13 @@
             "name": "Maras0830",
             "email": "Maras0830@gmail.com"
         }
-    ]
+    ],
+    "minimum-stability": "stable",
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Maras0830\\ToCToP\\Providers\\ToCToPServiceProvider"
+            ]
+        }
+    }
 }

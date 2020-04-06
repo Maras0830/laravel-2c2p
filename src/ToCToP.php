@@ -1,4 +1,5 @@
 <?php
+
 namespace Maras0830\ToCToP;
 
 use Carbon\Carbon;
@@ -24,6 +25,7 @@ class ToCToP
     private $cvv;
     private $encCardData;
     private $cardholderName;
+    private $order_serial;
 
     /**
      * Pay2Go constructor.
@@ -50,14 +52,15 @@ class ToCToP
      * @param string $description
      * @return $this
      */
-    public function setOrder($currency_code, $total, $country, $description = '')
+    public function setOrder($currency_code, $total, $country, $description = '', $order_serial = '')
     {
-        $total  = str_pad($total, 12, '0', STR_PAD_LEFT);
+        $total = str_pad($total, 12, '0', STR_PAD_LEFT);
 
         $this->currencyCode = $currency_code;
         $this->panCountry = $country;
         $this->amt = $total;
         $this->desc = $description;
+        $this->order_serial = $order_serial;
 
         return $this;
     }
@@ -80,10 +83,20 @@ class ToCToP
      */
     public function setToCToPUrl($debug_mode)
     {
-        if ($debug_mode)
+        if ($debug_mode) {
             $this->ToCToPUrl = 'https://demo2.2c2p.com/2C2PFrontEnd/SecurePayment/Payment.aspx';
-        else
+        } else {
             $this->ToCToPUrl = 'https://demo2.2c2p.com/2C2PFrontEnd/SecurePayment/Payment.aspx';
+        }
+    }
+
+    public function setToCToPUrl_REDIRECT($debug_mode)
+    {
+        if ($debug_mode) {
+            $this->ToCToPUrl = 'https://demo2.2c2p.com/2C2PFrontEnd/RedirectV3/payment';
+        } else {
+            $this->ToCToPUrl = 'https://demo2.2c2p.com/2C2PFrontEnd/RedirectV3/payment';
+        }
     }
 
     /**
@@ -120,11 +133,11 @@ class ToCToP
      */
     private function setOrderSubmitForm()
     {
-        $result = '<form id="2c2p-payment-form" method="post" action='.route('v1.2c2p.checkout.pay').'>';
+        $result = '<form id="2c2p-payment-form" method="post" action=' . route('v1.2c2p.checkout.pay') . '>';
 
-        foreach($this as $key => $value) {
+        foreach ($this as $key => $value) {
             if (in_array($key, ['cardnumber', 'cvv', 'year', 'month'])) {
-                $result .= '<input type="hidden" data-encrypt="'. $key .'" name="' . $key . '" value="' . $value . '">';
+                $result .= '<input type="hidden" data-encrypt="' . $key . '" name="' . $key . '" value="' . $value . '">';
             } else {
                 $result .= '<input type="hidden" name="' . $key . '" value="' . $value . '">';
             }
@@ -175,29 +188,17 @@ class ToCToP
 
         $version = $this->Version;
 
-        $paymentPayload = base64_encode($xml); //Convert payload to base64
-        $payloadXML = "<PaymentRequest>
-           <version>$version</version>
-           <payload>$paymentPayload</payload>
-           <signature>$signature</signature>
-           </PaymentRequest>";
+        $payloadXML = "<PaymentRequest><version>$version</version><payload>$paymentPayload</payload><signature>$signature</signature></PaymentRequest>";
         $data = base64_encode($payloadXML); //Convert payload to base64
         $payload = urlencode($data);        //encode with base64
 
-        //open connection
-        $ch = curl_init();
-        curl_setopt($ch,CURLOPT_URL, $this->ToCToPUrl);
-        curl_setopt($ch,CURLOPT_POSTFIELDS, "paymentRequest=$payload");
-        curl_setopt($ch,CURLOPT_RETURNTRANSFER,true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-        //execute post
-        $response = curl_exec($ch); //close connection
-        curl_close($ch);
-
+        $response = $this->post($this->ToCToPUrl, "paymentRequest=" . $payload);
 
         //decode response with base64
         $reponsePayLoadXML = base64_decode($response);
+        \Log::info('$response', [$response]);
+        \Log::info('$reponsePayLoadXML', [$reponsePayLoadXML]);
+
 
         //Parse ResponseXML
         $xmlObject = simplexml_load_string($reponsePayLoadXML) or die("Error: Cannot create object");
@@ -205,14 +206,58 @@ class ToCToP
         //decode payload with base64 to get the Reponse
         $payloadxml = base64_decode($xmlObject->payload);
 
-        return (array) simplexml_load_string($payloadxml);
+        return (array)simplexml_load_string($payloadxml);
     }
 
-    private function setVersion($version)
+    public function pay_redirect()
+    {
+        $this->setToCToPUrl_REDIRECT(Config::get('to_c_to_p.Debug', true));
+
+        $result_url_1 = 'https://de3323da.ngrok.io/2c2p/callback';
+        //Construct signature string
+        $params = $this->Version . $this->merchantID . $this->desc . $this->order_serial . $this->currencyCode . $this->amt . $result_url_1;
+
+        $hash_value = hash_hmac('sha256', $params, $this->secretKey, false);    //Compute hash value
+
+        $html = '<form id="myform" method="post" action="' . $this->ToCToPUrl . '">
+                <input type="hidden" name="version" value="' . $this->Version . '"/>
+                <input type="hidden" name="merchant_id" value="' . $this->merchantID . '"/>
+                <input type="hidden" name="currency" value="' . $this->currencyCode . '"/>
+                <input type="hidden" name="result_url_1" value="' . $result_url_1 . '"/>
+                <input type="hidden" name="hash_value" value="' . $hash_value . '"/>
+                <input type="text" name="payment_description" value="' . $this->desc . '"  readonly/><br/>
+                <input type="text" name="order_id" value="' . $this->order_serial . '"  readonly/><br/>
+                <input type="text" name="amount" value="' . $this->amt . '" readonly/><br/>
+                <input type="submit" name="submit" value="Confirm" />
+            </form> 
+    <script type="text/javascript">
+        document.forms.myform.submit();
+    </script>';
+
+        return $html;
+    }
+
+    public function setVersion($version)
     {
         $this->Version = $version;
 
         return $this;
     }
 
+
+    private function post($url, $fields_string)
+    {
+        //open connection
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $fields_string);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $ca = './keys/ca-globalsign.cer';
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+        //execute post
+        $result = curl_exec($ch); //close connection
+        curl_close($ch);
+        return $result;
+    }
 }

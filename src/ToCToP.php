@@ -65,10 +65,13 @@ class ToCToP
         return $this;
     }
 
-    public function setCardInfo($card_number, $holder_name, $exp_year, $exp_month, $cvv)
+    public function setCardInfo($card_number, $exp_year, $exp_month, $cvv, $holder_name = null)
     {
+        if ($holder_name != null) {
+            $this->cardholderName = $holder_name;
+        }
+
         $this->cardnumber = $card_number;
-        $this->cardholderName = $holder_name;
         $this->year = $exp_year;
         $this->month = $exp_month;
         $this->cvv = $cvv;
@@ -161,19 +164,25 @@ class ToCToP
         return $result;
     }
 
-    public function setEncryptCardInfo($cardholderName, $encrypt_card_info)
+    public function setEncryptCardInfo($encrypt_card_info, $cardholderName = null)
     {
-        $this->cardholderName = $cardholderName;
         $this->encCardData = $encrypt_card_info;
+
+        if (!is_null($cardholderName)) {
+            $this->cardholderName = $cardholderName;
+        }
 
         return $this;
     }
 
-    public function pay()
+    public function pay($request3DS = "Y")
     {
+        $this->request3DS = $request3DS;
+
         $xml = '<PaymentRequest>';
+
         foreach ($this as $k => $v) {
-            if (in_array($k, ['merchantID', 'uniqueTransactionCode', 'desc', 'amt', 'currencyCode', 'panCountry', 'cardholderName', 'encCardData'])) {
+            if (in_array($k, ['merchantID', 'uniqueTransactionCode', 'desc', 'amt', 'currencyCode', 'panCountry', 'cardholderName', 'request3DS', 'encCardData'])) {
                 $xml .= "<$k>$v</$k>";
             }
         }

@@ -89,7 +89,7 @@ class ToCToP
         if ($debug_mode) {
             $this->ToCToPUrl = 'https://demo2.2c2p.com/2C2PFrontEnd/SecurePayment/PaymentAuth.aspx';
         } else {
-            $this->ToCToPUrl = 'https://demo2.2c2p.com/2C2PFrontEnd/SecurePayment/PaymentAuth.aspx';
+            $this->ToCToPUrl = 'https://my.2c2p.com/2C2PFrontEnd/SecurePayment/PaymentAuth.aspx';
         }
     }
 

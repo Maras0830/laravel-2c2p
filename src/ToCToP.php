@@ -53,7 +53,7 @@ class ToCToP
      */
     public function setOrder($currency_code, $total, $country, $description = '', $order_serial = '')
     {
-        $total = str_pad($total * 100, 12, '0', STR_PAD_LEFT);
+        $total = str_pad($total, 12, '0', STR_PAD_LEFT);
 
         $this->currencyCode = $currency_code;
         $this->panCountry = $country;
